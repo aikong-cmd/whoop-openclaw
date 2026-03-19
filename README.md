@@ -1,164 +1,135 @@
-# WHOOP Health Data Sync 🏋️
+# WHOOP → AI Health Reports 🏋️
 
-[中文文档 / Chinese README](README_CN.md)
+[中文文档 / Chinese](README_CN.md)
 
-Sync WHOOP wearable data to markdown files for AI-powered health insights.
+Turn your WHOOP data into daily AI health reports. 5 steps, 10 minutes.
 
-Pure Python, zero dependencies (stdlib + curl only). 10-minute setup, authorize once, runs forever.
+## How It Works
 
-## Features
-
-| Category | Data |
-|----------|------|
-| **Recovery** | Score (🔴🟡🟢), HRV (RMSSD), Resting HR, SpO2, Skin Temp |
-| **Sleep** | Performance/Efficiency/Consistency, Stages (Light/Deep/REM/Awake), Respiratory Rate, Sleep Need, Balance |
-| **Day Strain** | Strain (0-21), Calories (kJ + kcal), Avg/Max HR |
-| **Workouts** | Sport, Duration, Strain, Calories, HR, HR Zones, Distance, Elevation |
-| **Weekly** | Averages for recovery/HRV/RHR, sleep, strain, workout count |
-
-## Install
-
-### Option A: OpenClaw (one command)
-
-```bash
-clawhub install whoop
+```
+WHOOP band → WHOOP API → Markdown files → AI reads & reports
 ```
 
-### Option B: Manual
+Your AI agent syncs recovery, sleep, strain, and workout data daily, then sends you a plain-language health briefing.
+
+## Quick Start
+
+### Step 1: Install the skill
 
 ```bash
+# OpenClaw users
+clawhub install whoop
+
+# Or manual
 git clone https://github.com/aikong-cmd/whoop-openclaw.git
 cp -r whoop-openclaw ~/.openclaw/workspace/skills/whoop
 ```
 
-## Setup
+### Step 2: Create a WHOOP Developer App
 
-### 1. Create a WHOOP Developer App
+Go to **https://developer-dashboard.whoop.com** → Create Application:
 
-1. Go to [developer-dashboard.whoop.com](https://developer-dashboard.whoop.com/)
-2. Sign in with your WHOOP account
-3. Click **Create Application**
-   - **Name**: anything (e.g. "AI Health Sync")
-   - **Redirect URI**: `http://localhost:9527/callback`
-   - **Scopes**: select all `read:*` scopes + `offline`
-4. Note your **Client ID** and **Client Secret**
+| Field | Value |
+|-------|-------|
+| Name | Anything (e.g. "AI Health Sync") |
+| Redirect URI | `http://localhost:9527/callback` |
+| Scopes | ✅ All `read:*` + `offline` |
 
-### 2. Store Credentials
+Save your **Client ID** and **Client Secret**.
 
-**Environment Variables (simplest):**
+### Step 3: Set credentials
 
 ```bash
 export WHOOP_CLIENT_ID="your-client-id"
 export WHOOP_CLIENT_SECRET="your-client-secret"
 ```
 
-**Or 1Password (for OpenClaw users):**
+### Step 4: Authorize (one-time)
 
-Create a Login item named `whoop` (username = Client ID, password = Client Secret).
-
-### 3. Authorize (one-time)
-
-#### 🖥️ Local Machine
+**If you have a browser on the same machine:**
 
 ```bash
+cd ~/.openclaw/workspace/skills/whoop
 python3 scripts/auth.py
+# Opens browser → log in → authorize → done ✅
 ```
 
-Opens URL → authorize in browser → callback auto-caught → done ✅
-
-#### 🌐 Remote Server (headless)
+**If running on a remote server (no browser):**
 
 ```bash
-# Get the auth URL
 python3 scripts/auth.py --print-url
-
-# Open URL in local browser, authorize
-# Browser redirects to localhost:9527 (won't load — that's fine)
-# Copy the full URL from address bar, then:
-
-python3 scripts/auth.py --callback-url "http://localhost:9527/callback?code=xxx&state=yyy"
+# 1. Open the printed URL in your local browser
+# 2. Log in to WHOOP and authorize
+# 3. Browser redirects to a page that won't load (normal!)
+# 4. Copy the FULL URL from the address bar, then:
+python3 scripts/auth.py --callback-url "paste-the-full-url-here"
 ```
 
-**Authorize once, runs forever.** Tokens auto-refresh via the `offline` scope.
+You'll see `✅ Tokens saved`. This only needs to be done once — tokens auto-refresh forever.
 
-## Usage
+### Step 5: Sync your data
 
 ```bash
-python3 scripts/sync.py              # Sync today
-python3 scripts/sync.py --days 7     # Last 7 days
-python3 scripts/sync.py --weekly     # Weekly summary
-python3 scripts/sync.py --date 2026-03-07  # Specific date
+python3 scripts/sync.py           # Today
+python3 scripts/sync.py --days 7  # Last 7 days
+python3 scripts/sync.py --weekly  # Weekly summary
 ```
 
-Output: `~/.openclaw/workspace/health/whoop-YYYY-MM-DD.md`
+Output goes to `~/.openclaw/workspace/health/whoop-YYYY-MM-DD.md`
 
-## Daily Auto-Sync (OpenClaw Cron)
+**That's it.** Your AI agent can now read these files and answer health questions.
+
+---
+
+## Optional: Daily Auto-Reports
+
+Set up a cron job so your AI sends you a health briefing every morning:
 
 ```bash
 openclaw cron add \
   --name whoop-daily \
-  --schedule "0 10 * * *" \
+  --schedule "30 10 * * *" \
   --timezone Asia/Shanghai \
-  --task "Run: python3 ~/.openclaw/workspace/skills/whoop/scripts/sync.py --days 2. Then read the generated markdown files and send me the latest day's report."
+  --task "Run: python3 ~/.openclaw/workspace/skills/whoop/scripts/sync.py --days 2. Read the latest health file and send me a report with insights."
 ```
 
-## Output Example
+> ⏰ 10:30 AM recommended — WHOOP finalizes sleep data after you wake up.
+
+## Sample Output
 
 ```markdown
 # WHOOP — 2026-03-09
 
 ## Recovery 🟢
-- **Recovery Score**: 66%
-- **HRV (RMSSD)**: 41.4 ms
-- **Resting HR**: 62.0 bpm
-- **SpO2**: 96.3%
-- **Skin Temp**: 33.7°C
+- Recovery Score: 66%
+- HRV: 41.4 ms | Resting HR: 62 bpm
+- SpO2: 96.3% | Skin Temp: 33.7°C
 
-## Sleep
-- **Performance**: 🟡 61%
-- **Total in Bed**: 5h47m
-- **Stages**: Light 2h08m | Deep 1h25m | REM 1h38m | Awake 35m
-- **Sleep Need**: 9h41m
-- **Balance**: 4h29m deficit
+## Sleep 🟡
+- Performance: 61% | In Bed: 5h47m
+- Deep 1h25m | REM 1h38m | Light 2h08m | Awake 35m
+- Sleep Need: 9h41m → Deficit: 4h29m
 
-## Day Strain
-- **Strain**: 0.1 / 21.0
-- **Calories**: 2233 kJ (534 kcal)
+## Strain
+- Day Strain: 0.1 / 21.0 | Calories: 534 kcal
 
 ## Workouts
-- Walking · 16m28s · Strain 4.9 · Avg HR 114 bpm
+- Walking · 16m · Strain 4.9 · Avg HR 114 bpm
 ```
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---------|-----|
-| `No tokens found` | Run `auth.py` first |
-| `Token refresh failed (403)` | Re-run `auth.py` to re-authorize |
-| `error code: 1010` | Cloudflare block — script uses curl to bypass |
-| `No data for date` | WHOOP sleep finalizes after waking; try later |
+| `No tokens found` | Run Step 4 (auth.py) |
+| `Token refresh failed` | Re-run auth.py |
+| `No data for date` | WHOOP needs time after waking; try later |
 | Port 9527 in use | `kill $(lsof -ti:9527)` then retry |
-
-## File Structure
-
-```
-whoop/
-├── SKILL.md              # AI agent instructions
-├── README.md             # English docs (this file)
-├── README_CN.md          # Chinese docs
-├── scripts/
-│   ├── auth.py           # OAuth authorization
-│   └── sync.py           # Data sync + weekly reports
-└── data/
-    ├── tokens.json       # OAuth tokens (auto-refreshed, gitignored)
-    └── .gitignore
-```
 
 ## Requirements
 
-- Python 3.10+
-- curl
-- Active WHOOP membership
+- Python 3.10+ and curl (pre-installed on most systems)
+- WHOOP membership with an active band
 
 ## License
 
